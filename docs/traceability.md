@@ -9,9 +9,9 @@ nessa exigência.
 
 **Status:** "PASS" significa que todos os IDs da linha passaram na suíte completa com meta-check
 estrito da execução `d4kexx29` (2026-11-13, Windows 11 + Docker Desktop/WSL 2), feita em cópia
-limpa dos arquivos de entrega: os 133 IDs ficaram em PASS. O teste num clone Git real continua
-pendente (ver README, "Validado em"). Verificações de stack (V*) e itens fora do catálogo indicam
-o próprio resultado.
+limpa dos arquivos de entrega: os 133 IDs ficaram em PASS. A execução `ixbxe23v`, num clone Git
+real do histórico, repetiu o resultado (ver README, "Validado em"). Verificações de stack (V*) e
+itens fora do catálogo indicam o próprio resultado.
 
 Prioridade: P0 = núcleo ou eliminatório; P1 = exigido; P2 = opcional.
 

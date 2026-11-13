@@ -139,17 +139,16 @@ docker compose run --rm --no-deps tests bun run test:report
 | Docker Compose | v5.7.0 (versão validada) |
 | Shell | PowerShell 7 no host; rodadas de desenvolvimento no Dev Container (`wagering-dev`) |
 | Suíte completa | run d4kexx29 (2026-11-13): **exit 0**; 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED |
-| Onde | cópia limpa dos arquivos de entrega (sem `.git`, `node_modules`, `.env` nem resultados antigos), num projeto Compose isolado; o teste num clone Git real continua pendente |
+| Onde | cópia limpa dos arquivos de entrega (sem `.git`, `node_modules`, `.env` nem resultados antigos), num projeto Compose isolado |
+| Clone Git real | run ixbxe23v (2026-11-13): **exit 0** num `git clone --no-local` do histórico (HEAD `6cb10ec`), num projeto Compose isolado; 133 IDs em PASS, 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED |
 
-Ainda não executado: a validação num **clone Git real** (na época da execução d4kexx29 ainda não
-havia commits; a F7 usou uma cópia limpa dos arquivos de trabalho), PowerShell 5.1, Linux nativo,
-o V8 completo (`wsl --shutdown` com a stack no ar), `down -v` num clone descartável e o teste de
-carga opcional (`test:load`, não implementado).
+Ainda não executado: PowerShell 5.1, Linux nativo, o V8 completo (`wsl --shutdown` com a stack no
+ar), `down -v` num clone descartável e o teste de carga opcional (`test:load`, não implementado).
 Os volumes do projeto isolado da F7 (`wagering-f7clean_*`) ficaram no host; para removê-los, se
 quiser: `docker compose -p wagering-f7clean --profile "*" down -v` (apaga só os dados desse projeto).
 
 <details>
-<summary>Histórico completo de execuções (48 linhas, de 2026-11-11 a 2026-11-13)</summary>
+<summary>Histórico completo de execuções (49 linhas, de 2026-11-11 a 2026-11-13)</summary>
 
 Só execuções reais entram nesta tabela.
 
@@ -203,6 +202,7 @@ Só execuções reais entram nesta tabela.
 | 2026-11-13 | idem | idem | idem | idem | V7: 90 apostas pelo nginx com `docker compose kill -s SIGKILL app-2` no meio, `up -d`, `exec app-1 bun run verify` | 90 respostas 200, 0 falhas; app-2 voltou healthy; `verify` consistente (99 transações, 99 lançamentos) |
 | 2026-11-13 | idem | idem | idem | idem | V9c: tráfego, `kill -s SIGKILL ministack`, `up -d`, `exec app-1 bun run outbox:republish --since <t0>`, `verify` | a fila de eventos caiu de 222 para 0 mensagens (sem snapshot salvo); filas reprovisionadas; o republish reenviou os 24 eventos desde t0 (24 na fila depois); `verify` consistente. Os eventos anteriores a t0 continuam na outbox e voltariam com um `--since` mais antigo |
 | 2026-11-13 | idem | idem | idem | idem | V5: `docker compose logs`, `docker compose --profile "*" down` (sem `-v`) e `up -d` | dados preservados (9 wallets, 111 transações, 111 lançamentos antes e depois); `migrate` executou `[]`. Ao final o projeto isolado foi parado com `down`, sem `-v`; a stack principal (`wagering`) continuou rodando, intacta |
+| 2026-11-13 | `6cb10ec` (clone Git real) | idem | PowerShell 7 (host), **validação em clone Git real**: `git clone --no-local` do repositório local (80 commits) para uma pasta temporária, sem `node_modules` nem `.env`; projeto Compose isolado `wagering-gitclone` | idem | `docker compose -p wagering-gitclone run --rm --build tests` — suíte completa, sem `--phase`, meta-check estrito (V3 em clone Git real) | **exit 0**; modo completo (estrito); 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED (run ixbxe23v); static, conformance 22, unit 87, integration 155, concurrency 26 e resilience 18 casos sem falha; 650 s; pico de memória do contêiner 1357 MiB. Rodou com a stack principal e o Dev Container no ar, e os contêineres da stack continuaram intactos |
 
 Nota sobre as linhas anteriores a `yn1ok2ao`: até então o escopo estrito do meta-check comparava
 objetos copiados e nunca encontrava um ID, então o exit 0 daquelas execuções `--phase` veio só das

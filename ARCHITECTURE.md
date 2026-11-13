@@ -3,8 +3,8 @@
 **Estado: F0 a F7 concluídas** (2026-11-13, Windows 11 + Docker Desktop/WSL 2). A suíte completa
 com meta-check estrito passou numa cópia limpa e temporária dos arquivos de entrega, num projeto
 Compose isolado: na execução d4kexx29, 133 IDs ficaram em PASS, sendo 132 obrigatórios e um
-informativo (SPK-01). O teste num clone Git real continua pendente (na época da execução d4kexx29
-ainda não havia commits). Gates I1, I2, P1 e P2 decididos e implementados (ver abaixo).
+informativo (SPK-01). Num clone Git real do histórico, a execução ixbxe23v repetiu o resultado.
+Gates I1, I2, P1 e P2 decididos e implementados (ver abaixo).
 
 ## Roteiro de leitura
 
@@ -751,10 +751,10 @@ transação; o reenvio continua dependendo do produtor.
 obrigatórios e um informativo (SPK-01, o spike de MikroORM 7 + ALS + pg no Bun, `required: false`).
 A suíte completa (`docker compose run --rm --build tests`, sem `--phase`) só sai com 0 quando os 132
 obrigatórios estão em PASS e nenhuma etapa falha. Na execução d4kexx29, feita em cópia limpa, os 133
-ficaram em PASS; o teste num clone Git real continua pendente. Os testes usam PostgreSQL e
-MiniStack reais, processos reais da app (até 3 instâncias), contenção comprovada em
-`pg_stat_activity`, quedas comprovadas por cinco evidências (D47) e um verificador SQL
-independente da app depois de cada arquivo.
+ficaram em PASS, e a execução ixbxe23v repetiu o resultado num clone Git real do histórico. Os
+testes usam PostgreSQL e MiniStack reais, processos reais da app (até 3 instâncias), contenção
+comprovada em `pg_stat_activity`, quedas comprovadas por cinco evidências (D47) e um verificador
+SQL independente da app depois de cada arquivo.
 
 **Trade-offs aceitos.**
 - Hot wallet: todas as operações de uma wallet passam pelo lock dela; a vazão por wallet é limitada
