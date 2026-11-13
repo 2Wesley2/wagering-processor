@@ -1,0 +1,13 @@
+# Dependências e artefatos
+node_modules/
+bun.lock
+test-results/
+coverage/
+
+# Enunciado preservado intacto (docs/CHALLENGE.md) e arquivos gerenciados pelo Spec Kit
+docs/
+.specify/
+.claude/
+
+# Documentação em Markdown é formatada à mão (tabelas longas e quebras deliberadas)
+*.md
