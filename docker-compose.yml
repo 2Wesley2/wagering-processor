@@ -1,0 +1,277 @@
+name: wagering
+
+# Tudo roda em contêineres Linux. O host precisa apenas de Docker + Compose v2.
+# Imagens fixadas por tag + digest do índice multi-arch.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+x-aws: &aws
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_EC2_METADATA_DISABLED: 'true'
+
+# provenance/sbom desligados: com o image store do containerd a atestação muda a
+# cada build e mudaria o ID da imagem, recriando os contêineres em todo `up --build`.
+x-build-runtime: &build-runtime
+  context: .
+  target: runtime
+  provenance: false
+  sbom: false
+
+x-build-test: &build-test
+  context: .
+  target: test
+  provenance: false
+  sbom: false
+
+x-ministack-healthcheck: &ministack-healthcheck
+  test:
+    [
+      'CMD',
+      'python',
+      '-c',
+      "import urllib.request as u; u.urlopen('http://127.0.0.1:4566/_ministack/health', timeout=2)",
+    ]
+  interval: 3s
+  timeout: 3s
+  retries: 30
+  start_period: 5s
+
+x-queues-env: &queues-env
+  SQS_INBOUND_QUEUE: wager-transactions.fifo
+  SQS_DLQ: wager-transactions-dlq.fifo
+  SQS_EVENTS_QUEUE: wagering-events.fifo
+  SQS_WAIT_TIME_S: '10'
+  SQS_VISIBILITY_TIMEOUT_S: '30'
+  SQS_MAX_RECEIVE_COUNT: '8'
+
+x-app-env: &app-env
+  <<: [*aws, *queues-env]
+  NODE_ENV: production
+  APP_ROLES: api,consumer,outbox-publisher,pending-reference-worker
+  PORT: '3000'
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://wagering_app:${APP_DB_PASSWORD:-wagering_app}@postgres:5432/wagering
+  DB_POOL_MAX: '10'
+  SQS_ENDPOINT: http://ministack:4566
+  # Reprovisiona as filas no boot e quando o emulador some (QueueDoesNotExist); nunca faz purge.
+  SQS_PROVISION_ON_BOOT: '1'
+  SHUTDOWN_DRAIN_MS: '20000'
+  SHUTDOWN_HARD_TIMEOUT_MS: '30000'
+
+x-app: &app # A imagem é construída só pelo serviço `migrate` (ver comentário lá).
+  image: wagering-app:local
+  pull_policy: never
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 40s
+  logging: *logging
+  healthcheck:
+    test: ['CMD', 'bun', 'src/cli/healthcheck.ts', '--quiet']
+    interval: 5s
+    timeout: 3s
+    retries: 12
+    start_period: 20s
+  depends_on:
+    postgres:
+      condition: service_healthy
+    ministack:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+    init-queues:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:18.6-alpine3.24@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
+    command: ['postgres', '-c', 'max_connections=200']
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: wagering
+    volumes:
+      # PostgreSQL 18: o volume fica em /var/lib/postgresql (não em .../data).
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres', '-d', 'wagering']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+    logging: *logging
+
+  ministack:
+    image: ministackorg/ministack:1.5.40@sha256:a415d58e257931ddfd2678bfba915d6dea9508c3103df74fa90efdd6535c035c
+    environment:
+      # Persistência best-effort: o MiniStack só grava no shutdown; queda
+      # abrupta não está comprovada (ver ARCHITECTURE.md, limitações).
+      PERSIST_STATE: '1'
+      STATE_DIR: /var/lib/ministack-state
+    volumes:
+      - ministack-state:/var/lib/ministack-state
+    healthcheck: *ministack-healthcheck
+    restart: unless-stopped
+    logging: *logging
+
+  # Único serviço que constrói wagering-app:local. O Compose grava o nome do serviço
+  # num label da imagem; se vários serviços construíssem a mesma tag, cada build
+  # mudaria o ID da imagem e todo `up --build` recriaria os contêineres da app.
+  migrate:
+    build: *build-runtime
+    image: wagering-app:local
+    command: ['bun', 'src/cli/migrate.ts', 'up']
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PG_ADMIN_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+      APP_DB_NAME: wagering
+      OWNER_DB_PASSWORD: ${OWNER_DB_PASSWORD:-wagering_owner}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-wagering_app}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    logging: *logging
+
+  init-queues:
+    image: wagering-app:local
+    pull_policy: never
+    command: ['bun', 'src/cli/init-queues.ts']
+    environment:
+      <<: [*aws, *queues-env]
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SQS_ENDPOINT: http://ministack:4566
+    depends_on:
+      ministack:
+        condition: service_healthy
+    restart: 'no'
+    logging: *logging
+
+  app-1:
+    <<: *app
+    environment:
+      <<: *app-env
+      INSTANCE_ID: app-1
+
+  app-2:
+    <<: *app
+    environment:
+      <<: *app-env
+      INSTANCE_ID: app-2
+
+  app-3:
+    <<: *app
+    environment:
+      <<: *app-env
+      INSTANCE_ID: app-3
+
+  nginx:
+    build:
+      context: ./infra/nginx
+      provenance: false
+      sbom: false
+    image: wagering-nginx:local
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80'
+    depends_on:
+      app-1:
+        condition: service_healthy
+      app-2:
+        condition: service_healthy
+      app-3:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  # ---------------------------------------------------------------- profile: test
+  # Os testes usam PostgreSQL e MiniStack próprios: nunca tocam os dados nem as
+  # filas da aplicação.
+  postgres-test:
+    profiles: ['test']
+    image: postgres:18.6-alpine3.24@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
+    command: ['postgres', '-c', 'max_connections=200', '-c', 'client_connection_check_interval=1s']
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres', '-d', 'postgres']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    logging: *logging
+
+  ministack-test:
+    profiles: ['test']
+    image: ministackorg/ministack:1.5.40@sha256:a415d58e257931ddfd2678bfba915d6dea9508c3103df74fa90efdd6535c035c
+    environment:
+      PERSIST_STATE: '0'
+    healthcheck: *ministack-healthcheck
+    logging: *logging
+
+  tests:
+    profiles: ['test']
+    build: *build-test
+    image: wagering-tests:local
+    init: true
+    mem_limit: 3g
+    environment:
+      <<: *aws
+      NODE_ENV: test
+      PG_ADMIN_URL: postgres://postgres:postgres@postgres-test:5432/postgres
+      OWNER_DB_PASSWORD: wagering_owner
+      APP_DB_PASSWORD: wagering_app
+      SQS_ENDPOINT: http://ministack-test:4566
+      MINISTACK_BASE_URL: http://ministack-test:4566
+      EXPECTED_MINISTACK_VERSION: '1.5.40'
+      STACK_URL: http://nginx
+    volumes:
+      - test-artifacts:/app/test-results
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      ministack-test:
+        condition: service_healthy
+
+  # -------------------------------------------------------- profile: persist-check
+  # Runbooks V9a/V9b: reinício normal e queda abrupta de um MiniStack isolado.
+  ministack-persist:
+    profiles: ['persist-check']
+    image: ministackorg/ministack:1.5.40@sha256:a415d58e257931ddfd2678bfba915d6dea9508c3103df74fa90efdd6535c035c
+    environment:
+      PERSIST_STATE: '1'
+      STATE_DIR: /var/lib/ministack-state
+    volumes:
+      - ministack-persist-state:/var/lib/ministack-state
+    healthcheck: *ministack-healthcheck
+    logging: *logging
+
+  persist-tool:
+    profiles: ['persist-check']
+    build: *build-test
+    image: wagering-tests:local
+    environment:
+      <<: *aws
+      NODE_ENV: test
+      SQS_ENDPOINT: http://ministack-persist:4566
+    command: ['bun', 'scripts/persist-check.ts', 'check']
+    depends_on:
+      ministack-persist:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  ministack-state:
+  ministack-persist-state:
+  test-artifacts:

@@ -1,0 +1,11 @@
+.git
+**/node_modules
+coverage
+test-results
+docs
+.env
+.env.*
+!.env.example
+*.log
+.vscode
+.idea
