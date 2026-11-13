@@ -1,0 +1,53 @@
+# Sobreposição usada só pelo devcontainer (ver devcontainer.json), sempre depois do
+# docker-compose.yml da raiz. Caminhos relativos resolvem a partir da raiz do repositório.
+#
+# Projeto Compose próprio: os contêineres e volumes ganham o prefixo `wagering-dev`, então a
+# stack (`wagering`, volumes wagering_pgdata e wagering_ministack-state) e o postgres-test /
+# ministack-test usados por `docker compose run tests` nunca são tocados.
+name: wagering-dev
+
+services:
+  dev:
+    build:
+      context: .devcontainer
+      provenance: false
+      sbom: false
+    image: wagering-dev:local
+    init: true
+    command: ['sleep', 'infinity']
+    environment:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_EC2_METADATA_DISABLED: 'true'
+      PG_ADMIN_URL: postgres://postgres:postgres@postgres-test:5432/postgres
+      OWNER_DB_PASSWORD: wagering_owner
+      APP_DB_PASSWORD: wagering_app
+      SQS_ENDPOINT: http://ministack-test:4566
+      MINISTACK_BASE_URL: http://ministack-test:4566
+      EXPECTED_MINISTACK_VERSION: '1.5.40'
+      CLAUDE_CONFIG_DIR: /home/bun/.claude
+    volumes:
+      - .:/workspaces/backend-challenge
+      # Esconde o node_modules do Windows (mesma pasta física) atrás de um volume Linux.
+      - node_modules:/workspaces/backend-challenge/node_modules
+      # Configuração e login do Claude Code do contêiner; nasce vazio, nada vem do Windows.
+      - claude-config:/home/bun/.claude
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      ministack-test:
+        condition: service_healthy
+
+  # Só no projeto wagering-dev os serviços de teste saem do profile `test`: assim `config`,
+  # `stop` e `down` (que ignoram serviços de profiles inativos) os enxergam e o shutdown do
+  # VS Code também os para. O docker-compose.yml da raiz não muda.
+  postgres-test:
+    profiles: !reset []
+
+  ministack-test:
+    profiles: !reset []
+
+volumes:
+  node_modules:
+  claude-config:

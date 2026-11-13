@@ -1,0 +1,25 @@
+// Ambiente de desenvolvimento OPCIONAL. Construir e testar o projeto continua exigindo só
+// Docker + Compose: docker compose run --rm --build tests bun scripts/test-all.ts
+{
+  "name": "backend-challenge (dev)",
+  "dockerComposeFile": ["../docker-compose.yml", "compose.yml"],
+  "service": "dev",
+  "runServices": ["dev", "postgres-test", "ministack-test"],
+  "workspaceFolder": "/workspaces/backend-challenge",
+  "remoteUser": "bun",
+  "shutdownAction": "stopCompose",
+  "postCreateCommand": "bun install --frozen-lockfile --ignore-scripts",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  }
+}
