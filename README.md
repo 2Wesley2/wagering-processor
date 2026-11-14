@@ -142,6 +142,7 @@ docker compose run --rm --no-deps tests bun run test:report
 | Suíte completa | run d4kexx29 (2026-11-13): **exit 0**; 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED |
 | Onde | cópia limpa dos arquivos de entrega (sem `.git`, `node_modules`, `.env` nem resultados antigos), num projeto Compose isolado |
 | Clone Git real | run ixbxe23v (2026-11-13): **exit 0** num `git clone --no-local` do histórico (HEAD `6cb10ec`), num projeto Compose isolado; 133 IDs em PASS, 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED |
+| Depois de `6cb10ec` | os commits seguintes alteram só documentação em Markdown (`README.md`, `ARCHITECTURE.md`, `docs/traceability.md` e `docs/glossario.md`): o registro desta validação, o glossário, as legendas e a pontuação. Código, testes e configuração continuam os de `6cb10ec`. Nenhum teste nem imagem lê esses arquivos, e a suíte não foi executada de novo nesses commits |
 
 Os códigos `V` nesta seção e no histórico identificam as verificações da stack e da entrega:
 
