@@ -131,6 +131,48 @@ docker compose run --rm --no-deps tests bun run test:report
   `docker compose run --rm --build --no-deps tests bun run format:check`.
 - Prova de que falhas chegam ao exit code: `docker compose run --rm tests bun scripts/test-all.ts --selfcheck` (deve sair com 1).
 
+## Integração contínua (GitHub Actions)
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda a mesma suíte completa desta
+página num runner `ubuntu-24.04` do GitHub.
+
+| Item | Valor |
+|---|---|
+| Gatilhos | push na `main`, pull request e disparo manual (`workflow_dispatch`) |
+| Job | "Suíte completa (Docker Compose)", com limite de 45 min |
+| Passos | versões do Docker e do Compose; `docker compose config --quiet`; `docker compose run --rm --build tests`; depois, mesmo em caso de falha, o resumo do `test:report` e `docker compose --profile test down -v` |
+| Permissões | nenhuma por padrão; o job só lê o repositório (`contents: read`) e não usa segredos |
+| Actions de terceiros | só `actions/checkout`, fixada por SHA (v7.0.1) e sem guardar a credencial no checkout |
+| Execuções repetidas | em pull request, um push novo cancela a execução anterior; na `main`, cada commit roda até o fim |
+
+O job falha nas mesmas condições da execução local: uma etapa com falha ou um ID obrigatório fora de
+`PASS`. Como não há segredos, pull requests de forks rodam com o token só de leitura que o GitHub dá
+a eles.
+
+Comandos úteis, com o GitHub CLI (`gh`) autenticado no repositório:
+
+```bash
+gh workflow enable ci.yml
+gh workflow run ci.yml
+gh run list --workflow ci.yml
+gh run watch
+```
+
+`gh run watch` acompanha a execução escolhida até o fim; a última linha do passo da suíte começa com
+`RESULTADO:`, como na execução local.
+
+**Situação atual:** o workflow está desativado no GitHub e ainda não tem execução registrada. Para
+ativá-lo, use `gh workflow enable ci.yml`. Enquanto nenhuma execução passar, a validação registrada
+em [Validado em](#validado-em) continua sendo a do Windows 11.
+
+Para conferir o workflow antes de um commit, sem instalar nada no host:
+
+```bash
+docker run --rm -v "${PWD}:/repo" -w /repo rhysd/actionlint:1.7.12 -no-color
+```
+
+Sem erros, o comando não imprime nada e sai com 0.
+
 ## Validado em
 
 | Item | Valor |
