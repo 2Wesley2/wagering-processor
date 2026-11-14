@@ -15,6 +15,64 @@ itens fora do catálogo indicam o próprio resultado.
 
 Prioridade: P0 = núcleo ou eliminatório; P1 = exigido; P2 = opcional.
 
+**Como ler as colunas.**
+
+- `§` na coluna "Requisito" é uma seção do enunciado ([CHALLENGE.md](CHALLENGE.md)); na coluna
+  "Decisões", é uma seção do [ARCHITECTURE.md](../ARCHITECTURE.md).
+- `Dnn` na coluna "Decisões" é o número de uma decisão do plano de implementação usado no
+  desenvolvimento. O plano não faz parte do repositório; a tabela abaixo dá o tema de cada código e
+  onde ele está explicado.
+- Na coluna "Testes", `h` e `s` no fim do ID são as variantes HTTP e SQS do mesmo cenário
+  (`CT-01h`, `CT-01s`); outra letra indica um subcaso (`IT-21b`). Os termos estão no
+  [glossário](glossario.md).
+
+| Prefixo | Família de requisitos | Prefixo | Família de requisitos |
+|---|---|---|---|
+| DOM | Garantias gerais do domínio | IDP | Idempotência |
+| MOD | Modelagem do domínio | AUTH | Autenticação |
+| MON | Valores monetários | HC | Health check |
+| WAL | Carteira | SQS | Mensageria pela fila |
+| WTX | Transação de aposta | INB, OUT, OBX | Inbox, outbox e publicadores da outbox |
+| LED | Ledger | EVT | Eventos de integração |
+| BR | Regras de negócio dos tipos de operação | OBS | Observabilidade |
+| REF | Referências pendentes | DOC | Documentação |
+| FC | Códigos de falha | TST | Testes exigidos |
+| CC | Concorrência | STK | Stack obrigatória |
+| CON | Restrições técnicas do enunciado | ENV | Ambiente em contêineres |
+| API | API HTTP | LOAD, OPT | Teste de carga e itens opcionais |
+
+| Decisão | Tema | Onde está explicada |
+|---|---|---|
+| D05 | Representação do dinheiro (`Money`) | [§4](../ARCHITECTURE.md#4-money) |
+| D06 | Carteira: abertura, débito e crédito | [§5 a 7](../ARCHITECTURE.md#57-schema-e-invariantes-no-banco-f2) |
+| D07 | Transação de aposta: tipos, estados e transições | [§8 e 9](../ARCHITECTURE.md#89-transições-de-estado-e-errorcatalog-f1) |
+| D08 | Lançamento do ledger | [§5 a 7](../ARCHITECTURE.md#57-schema-e-invariantes-no-banco-f2) |
+| D09 | Política de liquidação e ordem das regras | [§8 e 9](../ARCHITECTURE.md#89-transições-de-estado-e-errorcatalog-f1) |
+| D11 | Catálogo de erros | [§8 e 9](../ARCHITECTURE.md#89-transições-de-estado-e-errorcatalog-f1) |
+| D15 | Dinheiro no banco (`DOMAIN money_amount`) | [§4](../ARCHITECTURE.md#4-money) e [§5 a 7](../ARCHITECTURE.md#57-schema-e-invariantes-no-banco-f2) |
+| D16 | Tabelas e constraints | [§5 a 7](../ARCHITECTURE.md#57-schema-e-invariantes-no-banco-f2) |
+| D17 | Saldo igual ao ledger, imposto pelo banco | [§5 a 7](../ARCHITECTURE.md#57-schema-e-invariantes-no-banco-f2) |
+| D18 | Imutabilidade em duas camadas (permissões e triggers) | [§5 a 7](../ARCHITECTURE.md#57-schema-e-invariantes-no-banco-f2) |
+| D19, D20 | Unit of Work com MikroORM; bootstrap e migrations | [§3](../ARCHITECTURE.md#3-orm-e-estratégia-transacional-f2) e [§15](../ARCHITECTURE.md#15-ambiente) |
+| D21 | Paginação do ledger por cursor | [README, API HTTP](../README.md#api-http) |
+| D22 | Reconciliação | [README, API HTTP](../README.md#api-http) |
+| D23, D24, D25 | Lock por carteira; ordem fixa dos recursos; timeouts e pools | [§6, 10 e 14](../ARCHITECTURE.md#6-10-e-14-submissão-http-concorrência-idempotência-e-autenticação-f3) |
+| D26 | Roteiro único da transação e caminhos de gravação | [§6, 10 e 14](../ARCHITECTURE.md#6-10-e-14-submissão-http-concorrência-idempotência-e-autenticação-f3) |
+| D27, D29 | `Idempotency-Key` (I2); resposta original e estado atual (I1) | [§1](../ARCHITECTURE.md#1-contexto-drivers-e-não-escopo) e [§6, 10 e 14](../ARCHITECTURE.md#6-10-e-14-submissão-http-concorrência-idempotência-e-autenticação-f3) |
+| D28 | Hashes do comando e do envelope | [§8 e 9](../ARCHITECTURE.md#89-transições-de-estado-e-errorcatalog-f1) |
+| D30, D31 | Validação de entrada; status HTTP e corpo de erro | [§6, 10 e 14](../ARCHITECTURE.md#6-10-e-14-submissão-http-concorrência-idempotência-e-autenticação-f3) |
+| D32 | Endpoints | [README, API HTTP](../README.md#api-http) |
+| D33 | Autenticação | [§6, 10 e 14](../ARCHITECTURE.md#6-10-e-14-submissão-http-concorrência-idempotência-e-autenticação-f3) |
+| D34, D35, D36, D37 | Filas SQS; consumidor e dead-letter; redrive; encerramento por `SIGTERM` | [§12](../ARCHITECTURE.md#12-mensageria-e-falhas-f5) |
+| D38 | Outbox, republicação e retenção | [§12](../ARCHITECTURE.md#12-mensageria-e-falhas-f5) e [§17](../ARCHITECTURE.md#17-observabilidade-retenção-e-recuperação-f6) |
+| D39 | Eventos de integração | [§6, 10 e 14](../ARCHITECTURE.md#6-10-e-14-submissão-http-concorrência-idempotência-e-autenticação-f3) e [§17](../ARCHITECTURE.md#17-observabilidade-retenção-e-recuperação-f6) |
+| D40 | Worker de pendências e regra de prazo | [§13](../ARCHITECTURE.md#13-pending_reference-e-worker-de-pendências-f4) |
+| D41, D42 | Logs; métricas | [§17](../ARCHITECTURE.md#17-observabilidade-retenção-e-recuperação-f6) |
+| D43 | Health (`live` e `ready`) | [README, Subir e verificar o serviço](../README.md#subir-e-verificar-o-serviço) |
+| D46, D47 | Instâncias reais da aplicação nos testes; injeção de falhas e prova de queda | [§15](../ARCHITECTURE.md#15-ambiente) |
+| D50 | Documentação e registro honesto da validação | [README, Validado em](../README.md#validado-em) |
+| D54 | Duplicatas tratadas pela aplicação, sem confiar na deduplicação do broker | [§12](../ARCHITECTURE.md#12-mensageria-e-falhas-f5) |
+
 ## Domínio e regras de negócio
 
 | Req | P | Requisito (resumo) | Decisões | Testes | Status |
@@ -98,6 +156,6 @@ Prioridade: P0 = núcleo ou eliminatório; P1 = exigido; P2 = opcional.
 | ENV-05 | MiniStack validado; limitações reais | CONF-00..21, V9a, V9b, V9c | ver README e ARCHITECTURE.md §16 |
 | E2E-01 | Stack com 3 instâncias atrás do nginx, fluxo de negócio | V2b (`test:smoke --level full`) | ver README |
 | E2E-02 | Matriz V1–V9 por sistema operacional | README, "Validado em" | Windows 11 + WSL 2 executado; PowerShell 5.1 e Linux nativo não executados |
-| LOAD-01 | Carga (`test:load`) | — | P2 opcional, não implementado |
-| OPT-01 | Partidas dobradas, OpenTelemetry, dashboard | — | P2 opcional, fora do escopo |
-| F8 | Autenticação com IdP externo (Keycloak) | — | opcional, não iniciado |
+| LOAD-01 | Carga (`test:load`) | não se aplica | P2 opcional, não implementado |
+| OPT-01 | Partidas dobradas, OpenTelemetry, dashboard | não se aplica | P2 opcional, fora do escopo |
+| F8 | Autenticação com IdP externo (Keycloak) | não se aplica | opcional, não iniciado |
