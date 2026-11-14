@@ -15,7 +15,8 @@ Para avaliar o projeto, siga nesta ordem: [Pré-requisitos](#pré-requisitos),
 [Rodar a suíte completa](#rodar-a-suíte-completa). As decisões e as limitações estão em
 [ARCHITECTURE.md](ARCHITECTURE.md); a rastreabilidade enunciado → testes, em
 [docs/traceability.md](docs/traceability.md). Para consultar os termos do domínio e siglas como
-`F3`, veja o [glossário do projeto](docs/glossario.md).
+`F3`, veja o [glossário do projeto](docs/glossario.md). O [mapa da documentação](docs/README.md)
+indica onde está cada assunto.
 
 ## Pré-requisitos
 
