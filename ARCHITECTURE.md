@@ -4,6 +4,7 @@
 com meta-check estrito passou numa cópia limpa e temporária dos arquivos de entrega, num projeto
 Compose isolado: na execução d4kexx29, 133 IDs ficaram em PASS, sendo 132 obrigatórios e um
 informativo (SPK-01). Num clone Git real do histórico, a execução ixbxe23v repetiu o resultado.
+O registro de cada execução está no [histórico de validações](docs/validacao.md).
 Gates I1, I2, P1 e P2 decididos e implementados (ver abaixo).
 
 ## Roteiro de leitura
