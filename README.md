@@ -14,7 +14,8 @@ Para avaliar o projeto, siga nesta ordem: [Pré-requisitos](#pré-requisitos),
 [Subir e verificar o serviço](#subir-e-verificar-o-serviço) e
 [Rodar a suíte completa](#rodar-a-suíte-completa). As decisões e as limitações estão em
 [ARCHITECTURE.md](ARCHITECTURE.md); a rastreabilidade enunciado → testes, em
-[docs/traceability.md](docs/traceability.md).
+[docs/traceability.md](docs/traceability.md). Para consultar os termos do domínio e siglas como
+`F3`, veja o [glossário do projeto](docs/glossario.md).
 
 ## Pré-requisitos
 
@@ -142,6 +143,20 @@ docker compose run --rm --no-deps tests bun run test:report
 | Onde | cópia limpa dos arquivos de entrega (sem `.git`, `node_modules`, `.env` nem resultados antigos), num projeto Compose isolado |
 | Clone Git real | run ixbxe23v (2026-11-13): **exit 0** num `git clone --no-local` do histórico (HEAD `6cb10ec`), num projeto Compose isolado; 133 IDs em PASS, 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED |
 
+Os códigos `V` nesta seção e no histórico identificam as verificações da stack e da entrega:
+
+| Código | O que confere |
+|---|---|
+| V1 | Subir a stack duas vezes: a segunda não aplica migrations nem recria contêineres |
+| V2a / V2b | Smoke pelo nginx: só health e distribuição entre as instâncias / fluxo de negócio completo |
+| V3 | Suíte completa com meta-check estrito numa cópia limpa ou num clone novo |
+| V4 | Falha proposital (`--selfcheck`), que precisa terminar com exit ≠ 0 |
+| V5 | Logs, `down` sem `-v` e dados preservados na volta |
+| V6 | `bun.lock` reproduzido com `--frozen-lockfile` |
+| V7 | `SIGKILL` numa instância sob tráfego, seguido de `verify` consistente |
+| V8 | Isolamento entre a suíte e a stack da aplicação; a variante com `wsl --shutdown` não foi executada |
+| V9a / V9b / V9c | MiniStack isolado: reinício normal / queda abrupta; perda do broker na stack seguida de `outbox:republish` |
+
 Ainda não executado: PowerShell 5.1, Linux nativo, o V8 completo (`wsl --shutdown` com a stack no
 ar), `down -v` num clone descartável e o teste de carga opcional (`test:load`, não implementado).
 Os volumes do projeto isolado da F7 (`wagering-f7clean_*`) ficaram no host; para removê-los, se
@@ -196,13 +211,13 @@ Só execuções reais entram nesta tabela.
 | 2026-11-13 | sem commits (cópia dos arquivos de trabalho) | idem | PowerShell 7 (host), **validação em cópia limpa**: cópia temporária dos 255 arquivos de entrega, sem `.git`, `node_modules`, `.env` nem resultados antigos; projeto Compose isolado `wagering-f7clean`, volumes próprios, `HTTP_PORT=18080` | idem | `docker compose config --quiet` e `docker compose up --build -d` (1ª subida) | exit 0 nos dois; `migrate` executou as 4 migrations num banco vazio; app-1..3 healthy; healthcheck live 200 / ready 200; `GET /health/ready` pela porta 18080 → 200 |
 | 2026-11-13 | idem | idem | idem | idem | `docker compose run --rm --no-deps tests bun run test:smoke --level full` (V2b / E2E-01) e `exec app-1 bun run verify` | exit 0; fluxo completo com respostas de app-1, app-2 e app-3; `verify` consistente |
 | 2026-11-13 | idem | idem | idem | idem | `docker compose up --build -d` de novo (V1) | exit 0; nenhum contêiner recriado; `migrate` executou `[]`; as 3 filas `unchanged` |
-| 2026-11-13 | idem | idem | idem | idem | `docker compose run --rm --build tests` — suíte completa, sem `--phase`, meta-check estrito (V3 em cópia limpa) | **exit 0**; modo completo (estrito); 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED (run d4kexx29). Validação em cópia limpa; o teste num clone Git real continua pendente; static, conformance 22, unit 87, integration 155, concurrency 26 e resilience 18 casos sem falha; 623 s; pico de memória do contêiner 1347 MiB. Rodou com a stack isolada no ar, e os contêineres dela continuaram intactos (parte do V8) |
+| 2026-11-13 | idem | idem | idem | idem | `docker compose run --rm --build tests`: suíte completa, sem `--phase`, meta-check estrito (V3 em cópia limpa) | **exit 0**; modo completo (estrito); 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED (run d4kexx29). Validação em cópia limpa; o teste num clone Git real continua pendente; static, conformance 22, unit 87, integration 155, concurrency 26 e resilience 18 casos sem falha; 623 s; pico de memória do contêiner 1347 MiB. Rodou com a stack isolada no ar, e os contêineres dela continuaram intactos (parte do V8) |
 | 2026-11-13 | idem | idem | idem | idem | `docker compose run --rm tests bun scripts/test-all.ts --selfcheck` (V4) | exit 1, como esperado |
 | 2026-11-13 | idem | idem | idem | idem | V6: build com `--frozen-lockfile` e `bun.lock` regenerado do zero | as imagens foram construídas com `--frozen-lockfile` sem alterar o `bun.lock` versionado; a resolução do zero hoje difere em uma dependência transitiva (`encodeurl` 2.0.3, publicada depois do lock, em vez da 2.0.2 travada): é para isso que o lock é versionado; o lock não foi alterado |
 | 2026-11-13 | idem | idem | idem | idem | V7: 90 apostas pelo nginx com `docker compose kill -s SIGKILL app-2` no meio, `up -d`, `exec app-1 bun run verify` | 90 respostas 200, 0 falhas; app-2 voltou healthy; `verify` consistente (99 transações, 99 lançamentos) |
 | 2026-11-13 | idem | idem | idem | idem | V9c: tráfego, `kill -s SIGKILL ministack`, `up -d`, `exec app-1 bun run outbox:republish --since <t0>`, `verify` | a fila de eventos caiu de 222 para 0 mensagens (sem snapshot salvo); filas reprovisionadas; o republish reenviou os 24 eventos desde t0 (24 na fila depois); `verify` consistente. Os eventos anteriores a t0 continuam na outbox e voltariam com um `--since` mais antigo |
 | 2026-11-13 | idem | idem | idem | idem | V5: `docker compose logs`, `docker compose --profile "*" down` (sem `-v`) e `up -d` | dados preservados (9 wallets, 111 transações, 111 lançamentos antes e depois); `migrate` executou `[]`. Ao final o projeto isolado foi parado com `down`, sem `-v`; a stack principal (`wagering`) continuou rodando, intacta |
-| 2026-11-13 | `6cb10ec` (clone Git real) | idem | PowerShell 7 (host), **validação em clone Git real**: `git clone --no-local` do repositório local (80 commits) para uma pasta temporária, sem `node_modules` nem `.env`; projeto Compose isolado `wagering-gitclone` | idem | `docker compose -p wagering-gitclone run --rm --build tests` — suíte completa, sem `--phase`, meta-check estrito (V3 em clone Git real) | **exit 0**; modo completo (estrito); 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED (run ixbxe23v); static, conformance 22, unit 87, integration 155, concurrency 26 e resilience 18 casos sem falha; 650 s; pico de memória do contêiner 1357 MiB. Rodou com a stack principal e o Dev Container no ar, e os contêineres da stack continuaram intactos |
+| 2026-11-13 | `6cb10ec` (clone Git real) | idem | PowerShell 7 (host), **validação em clone Git real**: `git clone --no-local` do repositório local (80 commits) para uma pasta temporária, sem `node_modules` nem `.env`; projeto Compose isolado `wagering-gitclone` | idem | `docker compose -p wagering-gitclone run --rm --build tests`: suíte completa, sem `--phase`, meta-check estrito (V3 em clone Git real) | **exit 0**; modo completo (estrito); 133 IDs em PASS, sendo 132 obrigatórios e 1 informativo (SPK-01); 0 FAIL, 0 BLOCKED, 0 SKIPPED, 0 NOT IMPLEMENTED (run ixbxe23v); static, conformance 22, unit 87, integration 155, concurrency 26 e resilience 18 casos sem falha; 650 s; pico de memória do contêiner 1357 MiB. Rodou com a stack principal e o Dev Container no ar, e os contêineres da stack continuaram intactos |
 
 Nota sobre as linhas anteriores a `yn1ok2ao`: até então o escopo estrito do meta-check comparava
 objetos copiados e nunca encontrava um ID, então o exit 0 daquelas execuções `--phase` veio só das
