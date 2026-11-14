@@ -1,4 +1,4 @@
-# Arquitetura — Distributed Wagering Processor
+# Arquitetura do Distributed Wagering Processor
 
 **Estado: F0 a F7 concluídas** (2026-11-13, Windows 11 + Docker Desktop/WSL 2). A suíte completa
 com meta-check estrito passou numa cópia limpa e temporária dos arquivos de entrega, num projeto
@@ -67,7 +67,7 @@ e ordem de chegada são otimizações e nunca garantias de correção.
 
 ### Interpretações decididas
 
-**I2 — escopo da Idempotency-Key: global** (decidido pelo usuário em
+**I2 (escopo da Idempotency-Key): global** (decidido pelo usuário em
 2026-11-11). É uma interpretação do §9 do enunciado, que diz que o header
 `Idempotency-Key` "é a fonte da verdade" e que a mesma key com payload diferente
 é conflito. Leitura adotada:
@@ -87,7 +87,7 @@ e ordem de chegada são otimizações e nunca garantias de correção.
   replay da transação desse outro (limitação comum às duas opções; a F8 a fecha).
 - Alternativa rejeitada: escopo por provedor, `UNIQUE (provider_id, idempotency_key)`.
 
-**I1 — replay de uma requisição cuja 1ª resposta foi 202: resposta original
+**I1 (replay de uma requisição cuja 1ª resposta foi 202): resposta original
 congelada** (decidido pelo usuário em 2026-11-12, opção A). É uma interpretação do
 §9 do enunciado ("requisição idêntica → mesma resposta, `idempotentReplay: true`"),
 lido em conjunto com o §7 regra 7 (resultado original com o saldo observado naquele
@@ -118,7 +118,7 @@ resposta foi `202` e a transação foi resolvida depois. Leitura adotada:
 - Verificado pelo IT-10b (F4): depois de o worker resolver a pendência, o POST repetido
   continua devolvendo o 202 original e o GET mostra o desfecho.
 
-**P1 — reversões da mesma referência: opção C** (decidido pelo usuário em 2026-11-12;
+**P1 (reversões da mesma referência): opção C** (decidido pelo usuário em 2026-11-12;
 implementado na F4, ver §11). Interpretação do §7 (tabela: REFUND e ROLLBACK
 revertem "uma única vez"; regra 4: "não pode ser revertida duas vezes pelo mesmo tipo de
 operação") lido junto com o §3 ("não pode duplicar créditos"). O texto não diz se reversões
@@ -134,15 +134,15 @@ Leitura adotada:
   `REFERENCE_ALREADY_REVERSED`; depois de o REFUND ser desfeito, o ROLLBACK da BET é aceito.
 - Consequência: o crédito líquido sobre uma aposta é sempre 0 ou o valor dela; o stake nunca
   volta duas vezes, em qualquer ordem de chegada.
-- Alternativas rejeitadas: (A) uma por tipo, sem limite de reversões em vigor — permite
+- Alternativas rejeitadas: (A) uma por tipo, sem limite de reversões em vigor: permite
   devolver o stake duas vezes (REFUND + ROLLBACK da mesma BET); (B) uma por referência para
-  sempre — impede cancelar uma aposta cujo reembolso foi desfeito.
+  sempre: impede cancelar uma aposta cujo reembolso foi desfeito.
 - No banco (migration 0002, F4): tabela `wager_reversals` com unicidade por (alvo, tipo) e
   índice parcial de uma reversão em vigor por alvo; as reversões que a F3 já tiver gravado
   entram na tabela na própria migration, que falha alto se algum dado existente violar a
   regra (§11).
 
-**P2 — WIN/LOSS e reversões da mesma BET: opção (c)** (decidido pelo usuário em
+**P2 (WIN/LOSS e reversões da mesma BET): opção (c)** (decidido pelo usuário em
 2026-11-12; implementado na F4, ver §11). O enunciado não trata da relação entre
 WIN/LOSS e reversões da mesma BET; tudo abaixo é interpretação, motivada pelo §3 (entrega
 fora de ordem e "não pode duplicar créditos"):
@@ -164,8 +164,8 @@ fora de ordem e "não pode duplicar créditos"):
   Para pedir o reembolso de novo, o provedor envia uma operação nova, com novo
   `externalTransactionId` **e** nova Idempotency-Key (reaproveitar só o externalId com outra
   key é 409 `EXTERNAL_TRANSACTION_ID_CONFLICT`).
-- Alternativas rejeitadas: (a) nenhuma regra extra — permite stake devolvido e prêmio na
-  mesma aposta; (b) só WIN/LOSS após reversão — o resultado dependeria da ordem de chegada
+- Alternativas rejeitadas: (a) nenhuma regra extra: permite stake devolvido e prêmio na
+  mesma aposta; (b) só WIN/LOSS após reversão: o resultado dependeria da ordem de chegada
   (reversão→WIN fica com um crédito; WIN→reversão, com os dois).
 
 ## 2. Estilo e módulos
@@ -273,7 +273,7 @@ de um estado terminal, qualquer transição lança `InvalidTransactionStateError
 
 `SettlementPolicy` aplica as linhas da precedência comuns a todas as opções de
 reversão: referência ausente/pendente → aguardar; escopo (provider, player,
-wallet, moeda, rodada — `gameId` não entra); kind compatível; referência
+wallet, moeda e rodada; `gameId` não entra); kind compatível; referência
 PROCESSED; valor igual; saldo (`INSUFFICIENT_FUNDS` para BET,
 `REVERSAL_INSUFFICIENT_FUNDS` para ROLLBACK que debita); limite de saldo.
 As linhas que dependem de P1/P2 (10a–10c) ficam numa `ReversalRule`; desde a F4 a regra
@@ -637,7 +637,7 @@ pré-requisito [P] marca como BLOCKED os testes que dependem dele.
 | CONF-20 | [D] | PurgeQueue é imediato e repetível | Sim |
 | CONF-21 | [D] | MessageDeduplicationId acima de 128 caracteres não é rejeitado | Sim: o limite precisa ser garantido pela app (UT-14) |
 | CONF-00 | [P] | Health responde 200 | Sim; o health **não expõe a versão**, que fica garantida só pelo digest fixado no compose |
-| — | — | Sem `StartMessageMoveTask`; sem métricas CloudWatch | Leitura do código, não executado |
+| nenhum | nenhuma | Sem `StartMessageMoveTask`; sem métricas CloudWatch | Leitura do código, não executado |
 
 **Persistência (observada em 2026-11-13 nos runbooks V9a e V9b, contra o serviço isolado
 `ministack-persist` do profile `persist-check`, nunca contra o emulador da aplicação).** Com
@@ -645,8 +645,8 @@ pré-requisito [P] marca como BLOCKED os testes que dependem dele.
 
 | Runbook | O que aconteceu | Observado |
 |---|---|---|
-| V9a — reinício normal (`docker compose restart`) | log `Persistence: saved sqs state` no encerramento e `loaded sqs state` na subida | filas e atributos (VT 600, RedrivePolicy), as 3 mensagens, a mensagem em voo continuou em voo, receive count preservado e cache de deduplicação preservado (a sonda com o mesmo id foi descartada: contagem 3 → 3) |
-| V9b — queda abrupta (`kill -s SIGKILL`) | nenhuma linha `saved`; na subida, `loaded` do snapshot anterior | as filas e mensagens criadas depois do último encerramento normal sumiram por completo; o estado anterior voltou como estava no snapshot (snapshot antigo restaurado) |
+| V9a: reinício normal (`docker compose restart`) | log `Persistence: saved sqs state` no encerramento e `loaded sqs state` na subida | filas e atributos (VT 600, RedrivePolicy), as 3 mensagens, a mensagem em voo continuou em voo, receive count preservado e cache de deduplicação preservado (a sonda com o mesmo id foi descartada: contagem 3 → 3) |
+| V9b: queda abrupta (`kill -s SIGKILL`) | nenhuma linha `saved`; na subida, `loaded` do snapshot anterior | as filas e mensagens criadas depois do último encerramento normal sumiram por completo; o estado anterior voltou como estava no snapshot (snapshot antigo restaurado) |
 
 - **A persistência do MiniStack não está comprovada para queda abrupta**: na queda observada, tudo
   desde o último encerramento normal foi perdido e um snapshot antigo voltou (mensagens já apagadas
@@ -680,11 +680,11 @@ traz o playerId nem as quantias usadas.
 | `db_lock_conflicts_total` / `uow_retries_total` | counter | reason (serialization, deadlock, lock_timeout) |
 | `sqs_messages_total` / `sqs_redeliveries_total` | counter | queue, result |
 | `dlq_messages_total` | counter | reason |
-| `outbox_publish_lag_seconds` | histogram | — (commit → aceite da fila) |
+| `outbox_publish_lag_seconds` | histogram | nenhum (mede do commit ao aceite da fila) |
 | `pending_reference_resolutions_total` | counter | outcome, reason |
 | `wallet_reconciliation_divergence_total` | counter | issue |
 | `http_request_duration_seconds` | histogram | method, route (ids viram `:id`), status |
-| `outbox_pending_messages`, `outbox_oldest_pending_age_seconds`, `pending_reference_backlog` | gauge | — |
+| `outbox_pending_messages`, `outbox_oldest_pending_age_seconds`, `pending_reference_backlog` | gauge | nenhum |
 | `sqs_queue_messages` | gauge | queue, state (visible, not_visible, delayed) |
 
 Os gauges são do sistema inteiro, calculados no scrape (todas as instâncias leem o mesmo banco e as
